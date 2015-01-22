@@ -142,29 +142,7 @@ namespace Xunit.Sdk
                 }
                 else
                 {
-                    var aggregator = new ExceptionAggregator(Aggregator);
-
-                    if (!aggregator.HasExceptions)
-                    {
-                        var tuple = await aggregator.RunAsync(() => InvokeTestAsync(aggregator));
-                        runSummary.Time = tuple.Item1;
-                        output = tuple.Item2;
-                    }
-
-                    var exception = aggregator.ToException();
-                    TestResultMessage testResult;
-
-                    if (exception == null)
-                        testResult = new TestPassed(Test, runSummary.Time, output);
-                    else
-                    {
-                        testResult = new TestFailed(Test, runSummary.Time, output, exception);
-                        runSummary.Failed++;
-                    }
-
-                    if (!CancellationTokenSource.IsCancellationRequested)
-                        if (!MessageBus.QueueMessage(testResult))
-                            CancellationTokenSource.Cancel();
+                    output = await RunTestAsync(runSummary, new ExceptionAggregator(Aggregator));
                 }
 
                 Aggregator.Clear();
@@ -179,6 +157,34 @@ namespace Xunit.Sdk
                 CancellationTokenSource.Cancel();
 
             return runSummary;
+        }
+
+        private async Task<string> RunTestAsync(RunSummary runSummary, ExceptionAggregator aggregator)
+        {
+            var output = string.Empty;
+            if (!aggregator.HasExceptions)
+            {
+                var tuple = await aggregator.RunAsync(() => InvokeTestAsync(aggregator));
+                runSummary.Time = tuple.Item1;
+                output = tuple.Item2;
+            }
+
+            var exception = aggregator.ToException();
+            TestResultMessage testResult;
+
+            if (exception == null)
+                testResult = new TestPassed(Test, runSummary.Time, output);
+            else
+            {
+                testResult = new TestFailed(Test, runSummary.Time, output, exception);
+                runSummary.Failed++;
+            }
+
+            if (!CancellationTokenSource.IsCancellationRequested)
+                if (!MessageBus.QueueMessage(testResult))
+                    CancellationTokenSource.Cancel();
+            
+            return output;
         }
 
         /// <summary>
