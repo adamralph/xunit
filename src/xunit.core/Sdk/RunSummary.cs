@@ -31,6 +31,8 @@
         /// <param name="other">The run summary to be added.</param>
         public void Aggregate(RunSummary other)
         {
+            Guard.ArgumentNotNull(nameof(other), other);
+
             Total += other.Total;
             Failed += other.Failed;
             Skipped += other.Skipped;
